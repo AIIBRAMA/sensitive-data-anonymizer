@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="lv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sensitīvo Datu Anonimizētājs</title>
+    <script src="https://unpkg.com/react@17.0.2/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@17.0.2/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/babel-standalone@6.26.0/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <div id="root" class="container mx-auto px-4 py-8"></div>
+
+    <script type="text/babel">
+        function ComprehensiveAnonymizer() {
+            const [inputText, setInputText] = React.useState('');
+            const [anonymizedText, setAnonymizedText] = React.useState('');
+            const [anonymizationOptions, setAnonymizationOptions] = React.useState({
+                emails: true,
+                names: true,
+                personalCodes: true,
+                birthDates: true,
+                jobTitles: true,
+                organizations: true
+            });
+
+            // Funkcija sensitīvu datu atpazīšanai un anonimizācijai
+            const anonymizeSensitiveData = (text) => {
+                let anonymizedText = text;
+
+                // E-pasta adrešu anonimizācija
+                if (anonymizationOptions.emails) {
+                    const emailRegex = /([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6})/gi;
+                    anonymizedText = anonymizedText.replace(emailRegex, (match) => {
+                        const [localPart, domain] = match.split('@');
+                        const anonymizedLocalPart = localPart.length > 2 
+                            ? localPart[0] + '*'.repeat(localPart.length - 2) + localPart[localPart.length - 1]
+                            : '*'.repeat(localPart.length);
+                        return `${anonymizedLocalPart}@${domain}`;
+                    });
+                }
+
+                // Vārdu un uzvārdu anonimizācija
+                if (anonymizationOptions.names) {
+                    const nameRegex = /\b([A-ZĀČĒĢĪĶĻŅRŠŪŽ][a-zāčēģīķļņršūž]+ [A-ZĀČĒĢĪĶĻŅRŠŪŽ][a-zāčēģīķļņršūž]+)\b/g;
+                    anonymizedText = anonymizedText.replace(nameRegex, (match) => {
+                        const [firstName, lastName] = match.split(' ');
+                        return `${firstName[0]}. ${lastName[0]}.`;
+                    });
+                }
+
+                // Personas kodu anonimizācija
+                if (anonymizationOptions.personalCodes) {
+                    const personalCodeRegex = /\b\d{6}-\d{5}\b/g;
+                    anonymizedText = anonymizedText.replace(personalCodeRegex, '***-*****');
+                }
+
+                // Dzimšanas datumu anonimizācija
+                if (anonymizationOptions.birthDates) {
+                    const birthDateRegex = /\b(\d{1,2}[.-]\d{1,2}[.-]\d{4}|\d{4}[-]\d{1,2}[-]\d{1,2})\b/g;
+                    anonymizedText = anonymizedText.replace(birthDateRegex, '**.**.****');
+                }
+
+                // Amatu anonimizācija
+                if (anonymizationOptions.jobTitles) {
+                    const jobTitlesRegex = /\b(direktors|vadītājs|speciālists|konsultants|menedžeris)\b/gi;
+                    anonymizedText = anonymizedText.replace(jobTitlesRegex, '[amats]');
+                }
+
+                // Iestāžu nosaukumu anonimizācija
+                if (anonymizationOptions.organizations) {
+                    const organizationRegex = /\b([A-ZĀČĒĢĪĶĻŅRŠŪŽ][a-zāčēģīķļņršūž]+ (SIA|AS|pašvaldība|universitāte|skola|biedrība))\b/g;
+                    anonymizedText = anonymizedText.replace(organizationRegex, '[iestāde]');
+                }
+
+                return anonymizedText;
+            };
+
+            // Apstrādes funkcija
+            const handleAnonymize = () => {
+                const result = anonymizeSensitiveData(inputText);
+                setAnonymizedText(result);
+            };
+
+            // Kopēšanas funkcija ar automātisku dzēšanu
+            const handleCopy = React.useCallback(() => {
+                navigator.clipboard.writeText(anonymizedText).then(() => {
+                    alert("Teksts nokopēts un tiks dzēsts.");
+
+                    setTimeout(() => {
+                        setInputText('');
+                        setAnonymizedText('');
+                    }, 2500);
+                }).catch(err => {
+                    alert("Neizdevās nokopēt tekstu.");
+                });
+            }, [anonymizedText]);
+
+            // Opciju pārslēgšanas funkcija
+            const toggleOption = (option) => {
+                setAnonymizationOptions(prev => ({
+                    ...prev,
+                    [option]: !prev[option]
+                }));
+            };
+
+            return (
+                <div className="max-w-md mx-auto p-4 bg-white rounded-lg shadow-md">
+                    <h2 className="text-xl font-bold mb-4 text-center">Sensitīvo Datu Anonimizētājs</h2>
+                    
+                    {/* Anonimizācijas opcijas */}
+                    <div className="grid grid-cols-2 gap-2 mb-4">
+                        {Object.keys(anonymizationOptions).map((option) => (
+                            <div key={option} className="flex items-center space-x-2">
+                                <input
+                                    type="checkbox"
+                                    id={option}
+                                    checked={anonymizationOptions[option]}
+                                    onChange={() => toggleOption(option)}
+                                    className="mr-2"
+                                />
+                                <label htmlFor={option} className="capitalize">
+                                    {option.replace(/([A-Z])/g, ' $1').toLowerCase()}
+                                </label>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Ievades lauks */}
+                    <textarea 
+                        placeholder="Ievadiet tekstu ar sensitīviem datiem"
+                        value={inputText}
+                        onChange={(e) => setInputText(e.target.value)}
+                        className="w-full p-2 border rounded mb-4"
+                        rows={4}
+                    />
+
+                    {/* Anonimizācijas poga */}
+                    <button 
+                        onClick={handleAnonymize}
+                        className="w-full bg-blue-500 text-white py-2 rounded mb-4"
+                        disabled={!inputText}
+                    >
+                        Anonimizēt
+                    </button>
+                    
+                    {/* Rezultāta parādīšana */}
+                    {anonymizedText && (
+                        <>
+                            <div className="border p-2 rounded mb-4">
+                                <p>{anonymizedText}</p>
+                            </div>
+                            <button 
+                                onClick={handleCopy}
+                                className="w-full bg-green-500 text-white py-2 rounded"
+                            >
+                                Kopēt un dzēst
+                            </button>
+                        </>
+                    )}
+                </div>
+            );
+        }
+
+        ReactDOM.render(<ComprehensiveAnonymizer />, document.getElementById('root'));
+    </script>
+</body>
+</html>
